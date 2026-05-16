@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tiny Defense</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+}
+
+:root{
+  --bg:#f4f1e9;
+  --panel:#fffaf0;
+  --ink:#2a241c;
+  --muted:#8a7f70;
+  --line:#ded3c2;
+  --path:#e6d0a8;
+  --cell:#fff7e7;
+  --cell2:#f7ecd8;
+  --tower:#2d5f73;
+  --tower2:#b86b3d;
+  --tower3:#5f4b8b;
+  --enemy:#c24b43;
+  --enemy2:#a63852;
+  --bullet:#2a241c;
+  --good:#3f7d58;
+  --bad:#b84545;
+  --gold:#b9892f;
+}
+
+html,body{
+  margin:0;
+  min-height:100%;
+  background:var(--bg);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+  color:var(--ink);
+}
+
+.app{
+  max-width:430px;
+  min-height:100vh;
+  margin:0 auto;
+  padding:14px 14px 22px;
+  background:linear-gradient(180deg,#fbf7ef,#f3ecdf);
+}
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin:4px 0 12px;
+}
+
+.title{
+  font-size:28px;
+  font-weight:900;
+  letter-spacing:-.8px;
+  line-height:1;
+}
+
+.subtitle{
+  margin-top:5px;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+}
+
+.header button{
+  border:0;
+  background:var(--ink);
+  color:white;
+  border-radius:14px;
+  padding:12px 14px;
+  font-size:13px;
+  font-weight:900;
+  box-shadow:0 5px 0 rgba(0,0,0,.14);
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-bottom:12px;
+}
+
+.stat{
+  background:rgba(255,250,240,.85);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:10px 8px;
+  text-align:center;
+  box-shadow:0 3px 0 rgba(80,60,30,.08);
+}
+
+.stat b{
+  display:block;
+  font-size:18px;
+  line-height:1.1;
+}
+
+.stat span{
+  display:block;
+  margin-top:3px;
+  font-size:10px;
+  color:var(--muted);
+  font-weight:900;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+}
+
+.boardWrap{
+  position:relative;
+  background:#d7c8af;
+  border:2px solid #c5b28f;
+  border-radius:22px;
+  padding:8px;
+  box-shadow:0 10px 0 rgba(93,70,36,.13);
+}
+
+.board{
+  position:relative;
+  width:100%;
+  aspect-ratio:1/1;
+  display:grid;
+  grid-template-columns:repeat(8,1fr);
+  grid-template-rows:repeat(8,1fr);
+  gap:4px;
+}
+
+.cell{
+  position:relative;
+  border-radius:10px;
+  background:var(--cell);
+  border:1px solid rgba(117,92,55,.18);
+  overflow:hidden;
+}
+
+.cell:nth-child(odd){
+  background:var(--cell2);
+}
+
+.cell.path{
+  background:var(--path);
+  border-color:#d0ad77;
+}
+
+.cell.blocked{
+  opacity:.45;
+}
+
+.cell.start::after{
+  content:"IN";
+  position:absolute;
+  inset:auto 4px 4px;
+  font-size:9px;
+  font-weight:1000;
+  color:#8a5b1e;
+  text-align:center;
+}
+
+.cell.base::after{
+  content:"BASE";
+  position:absolute;
+  inset:auto 2px 4px;
+  font-size:8px;
+  font-weight:1000;
+  color:#8a5b1e;
+  text-align:center;
+}
+
+.cell.valid{
+  outline:3px solid rgba(63,125,88,.4);
+}
+
+.cell.invalid{
+  outline:3px solid rgba(184,69,69,.35);
+}
+
+.entityLayer,.bulletLayer{
+  position:absolute;
+  inset:8px;
+  pointer-events:none;
+}
+
+.enemy{
+  position:absolute;
+  width:7.2%;
+  height:7.2%;
+  transform:translate(-50%,-50%);
+  border-radius:999px;
+  background:radial-gradient(circle at 35% 28%,#ffb2a4,var(--enemy) 46%,#8d2f2c);
+  border:2px solid rgba(80,20,20,.2);
+  box-shadow:0 3px 6px rgba(70,20,20,.25);
+  z-index:5;
+}
+
+.enemy.fast{
+  background:radial-gradient(circle at 35% 28%,#ffd4ec,var(--enemy2) 46%,#6f2234);
+}
+
+.enemy.boss{
+  width:9.5%;
+  height:9.5%;
+  background:radial-gradient(circle at 35% 28%,#ffd48c,#a24624 48%,#6f2513);
+}
+
+.enemy .hp{
+  position:absolute;
+  left:50%;
+  top:-8px;
+  width:130%;
+  height:4px;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.18);
+  border-radius:999px;
+  overflow:hidden;
+}
+
+.enemy .hp i{
+  display:block;
+  height:100%;
+  width:100%;
+  background:#58a85b;
+}
+
+.tower{
+  position:absolute;
+  inset:10%;
+  border-radius:12px;
+  background:linear-gradient(180deg,#477f93,var(--tower));
+  box-shadow:inset 0 -4px 0 rgba(0,0,0,.14),0 3px 0 rgba(0,0,0,.12);
+}
+
+.tower::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:48%;
+  height:18%;
+  background:#183845;
+  border-radius:999px;
+  transform-origin:left center;
+  transform:translateY(-50%) rotate(-25deg);
+}
+
+.tower.cannon{
+  background:linear-gradient(180deg,#df905f,var(--tower2));
+}
+
+.tower.slow{
+  background:linear-gradient(180deg,#8b74ba,var(--tower3));
+}
+
+.bullet{
+  position:absolute;
+  width:8px;
+  height:8px;
+  transform:translate(-50%,-50%);
+  border-radius:999px;
+  background:var(--bullet);
+  z-index:8;
+}
+
+.bullet.slow{
+  background:#5f4b8b;
+}
+
+.controls{
+  margin-top:14px;
+}
+
+.towerShop{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:9px;
+}
+
+.shopBtn{
+  border:1px solid var(--line);
+  background:rgba(255,250,240,.9);
+  border-radius:18px;
+  padding:11px 8px;
+  min-height:76px;
+  color:var(--ink);
+  box-shadow:0 4px 0 rgba(80,60,30,.1);
+}
+
+.shopBtn.active{
+  outline:3px solid rgba(42,36,28,.22);
+  transform:translateY(2px);
+  box-shadow:0 2px 0 rgba(80,60,30,.1);
+}
+
+.shopBtn:disabled{
+  opacity:.42;
+}
+
+.shopIcon{
+  display:block;
+  font-size:21px;
+  margin-bottom:4px;
+}
+
+.shopName{
+  display:block;
+  font-size:12px;
+  font-weight:1000;
+}
+
+.shopMeta{
+  display:block;
+  margin-top:3px;
+  font-size:10px;
+  font-weight:800;
+  color:var(--muted);
+}
+
+.actionRow{
+  display:grid;
+  grid-template-columns:1.35fr .8fr;
+  gap:10px;
+  margin-top:10px;
+}
+
+.primary,.secondary{
+  border:0;
+  border-radius:18px;
+  padding:15px 12px;
+  font-size:15px;
+  font-weight:1000;
+  box-shadow:0 5px 0 rgba(0,0,0,.13);
+}
+
+.primary{
+  background:var(--ink);
+  color:white;
+}
+
+.secondary{
+  background:#fffaf0;
+  color:var(--ink);
+  border:1px solid var(--line);
+}
+
+.primary:disabled,.secondary:disabled{
+  opacity:.45;
+}
+
+.message{
+  margin-top:12px;
+  min-height:42px;
+  background:rgba(255,250,240,.68);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:11px 12px;
+  color:#5c5145;
+  font-size:13px;
+  line-height:1.35;
+  font-weight:700;
+}
+
+.overlay{
+  position:absolute;
+  inset:8px;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(250,244,232,.74);
+  backdrop-filter:blur(3px);
+  border-radius:16px;
+  z-index:20;
+  text-align:center;
+  padding:20px;
+}
+
+.overlay.show{
+  display:flex;
+}
+
+.card{
+  background:#fffaf0;
+  border:1px solid var(--line);
+  border-radius:22px;
+  padding:22px 18px;
+  box-shadow:0 10px 0 rgba(80,60,30,.13);
+}
+
+.card h2{
+  margin:0 0 8px;
+  font-size:28px;
+  letter-spacing:-.8px;
+}
+
+.card p{
+  margin:0 0 16px;
+  color:var(--muted);
+  font-weight:800;
+  line-height:1.35;
+}
+
+.card button{
+  border:0;
+  background:var(--ink);
+  color:white;
+  border-radius:16px;
+  padding:13px 18px;
+  font-size:14px;
+  font-weight:1000;
+}
+
+.rangeHint{
+  position:absolute;
+  inset:0;
+  border-radius:999px;
+  border:2px dashed rgba(45,95,115,.25);
+  transform:scale(2.3);
+  pointer-events:none;
+  display:none;
+}
+
+.cell.preview .rangeHint{
+  display:block;
+}
+
+@media(max-width:370px){
+  .app{padding:10px}
+  .title{font-size:24px}
+  .stat{padding:8px 5px}
+  .stat b{font-size:16px}
+  .shopBtn{min-height:70px;padding:9px 6px}
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="title">Tiny Defense</div>
+      <div class="subtitle">วางป้อม ป้องกันฐาน เอาตัวรอดให้ครบ 10 wave</div>
+    </div>
+    <button id="resetBtn">Reset</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b id="heartText">10</b><span>Heart</span></div>
+    <div class="stat"><b id="coinText">90</b><span>Coins</span></div>
+    <div class="stat"><b id="waveText">1/10</b><span>Wave</span></div>
+    <div class="stat"><b id="scoreText">0</b><span>Score</span></div>
+  </div>
+
+  <div class="boardWrap">
+    <div id="board" class="board"></div>
+    <div id="bulletLayer" class="bulletLayer"></div>
+    <div id="entityLayer" class="entityLayer"></div>
+
+    <div id="overlay" class="overlay">
+      <div class="card">
+        <h2 id="resultTitle">Ready?</h2>
+        <p id="resultText">เลือกป้อมแล้วแตะช่องว่างเพื่อวาง จากนั้นกด Start Wave</p>
+        <button id="overlayBtn">Play</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="towerShop">
+      <button class="shopBtn active" data-type="basic">
+        <span class="shopIcon">🗼</span>
+        <span class="shopName">Basic</span>
+        <span class="shopMeta">35 coin · ยิงเร็ว</span>
+      </button>
+      <button class="shopBtn" data-type="cannon">
+        <span class="shopIcon">💣</span>
+        <span class="shopName">Cannon</span>
+        <span class="shopMeta">55 coin · ยิงแรง</span>
+      </button>
+      <button class="shopBtn" data-type="slow">
+        <span class="shopIcon">🌀</span>
+        <span class="shopName">Slow</span>
+        <span class="shopMeta">45 coin · ลดสปีด</span>
+      </button>
+    </div>
+
+    <div class="actionRow">
+      <button id="startBtn" class="primary">Start Wave</button>
+      <button id="sellBtn" class="secondary">Sell Mode: Off</button>
+    </div>
+
+    <div id="message" class="message">
+      เลือกป้อมด้านล่าง แล้วแตะช่องว่างเพื่อวาง ห้ามวางบนทางเดินสีน้ำตาล
+    </div>
+  </div>
+</div>
+
+<script>
+const SIZE = 8;
+const MAX_WAVE = 10;
+
+const board = document.getElementById("board");
+const entityLayer = document.getElementById("entityLayer");
+const bulletLayer = document.getElementById("bulletLayer");
+
+const heartText = document.getElementById("heartText");
+const coinText = document.getElementById("coinText");
+const waveText = document.getElementById("waveText");
+const scoreText = document.getElementById("scoreText");
+const startBtn = document.getElementById("startBtn");
+const resetBtn = document.getElementById("resetBtn");
+const sellBtn = document.getElementById("sellBtn");
+const message = document.getElementById("message");
+const overlay = document.getElementById("overlay");
+const resultTitle = document.getElementById("resultTitle");
+const resultText = document.getElementById("resultText");
+const overlayBtn = document.getElementById("overlayBtn");
+
+const towerData = {
+  basic:{ cost:35, damage:18, range:1.75, cooldown:520, cls:"basic", name:"Basic" },
+  cannon:{ cost:55, damage:42, range:1.55, cooldown:1050, cls:"cannon", name:"Cannon" },
+  slow:{ cost:45, damage:8, range:1.95, cooldown:720, slow:0.45, slowTime:900, cls:"slow", name:"Slow" }
+};
+
+const path = [
+  [0,3],[1,3],[2,3],[2,2],[3,2],[4,2],[4,3],[4,4],
+  [5,4],[6,4],[6,5],[6,6],[7,6]
+];
+
+let pathSet = new Set(path.map(p => p.join(",")));
+let cells = [];
+let towers = [];
+let enemies = [];
+let bullets = [];
+
+let hearts, coins, wave, score, selectedType, running, gameOver, sellMode;
+let lastTime = 0;
+let spawnQueue = [];
+let spawnTimer = 0;
+let waveAlive = false;
+
+function init(){
+  board.innerHTML = "";
+  cells = [];
+  towers = [];
+  enemies = [];
+  bullets = [];
+  bulletLayer.innerHTML = "";
+  entityLayer.innerHTML = "";
+
+  hearts = 10;
+  coins = 90;
+  wave = 1;
+  score = 0;
+  selectedType = "basic";
+  running = false;
+  gameOver = false;
+  sellMode = false;
+  spawnQueue = [];
+  spawnTimer = 0;
+  waveAlive = false;
+  lastTime = performance.now();
+
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+
+      if(pathSet.has(`${r},${c}`)) cell.classList.add("path");
+      if(r===0 && c===3) cell.classList.add("start");
+      if(r===7 && c===6) cell.classList.add("base");
+
+      const hint = document.createElement("div");
+      hint.className = "rangeHint";
+      cell.appendChild(hint);
+
+      cell.addEventListener("click", () => handleCellTap(r,c));
+      cell.addEventListener("touchstart", () => previewCell(r,c), {passive:true});
+      cell.addEventListener("mouseenter", () => previewCell(r,c));
+      cell.addEventListener("mouseleave", clearPreview);
+
+      board.appendChild(cell);
+      cells.push(cell);
+    }
+  }
+
+  document.querySelectorAll(".shopBtn").forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.type === selectedType);
+    btn.onclick = () => {
+      selectedType = btn.dataset.type;
+      sellMode = false;
+      updateShop();
+      setMsg(`เลือกป้อม ${towerData[selectedType].name} แล้ว แตะช่องว่างเพื่อวาง`);
+    };
+  });
+
+  updateShop();
+  updateUI();
+  hideOverlay();
+  setMsg("เริ่มได้เลย: แนะนำวาง Basic 1-2 จุดใกล้ทางเดินก่อน แล้วกด Start Wave");
+  requestAnimationFrame(loop);
+}
+
+function indexOfCell(r,c){ return r*SIZE+c; }
+function getCellCenter(r,c){
+  const step = 100 / SIZE;
+  return { x:(c+.5)*step, y:(r+.5)*step };
+}
+function distance(a,b){
+  const dx = a.x-b.x;
+  const dy = a.y-b.y;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+function gridDistance(t,e){
+  const p = getEnemyPosition(e);
+  const dx = (t.c + .5) - p.cg;
+  const dy = (t.r + .5) - p.rg;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+function towerAt(r,c){
+  return towers.find(t => t.r===r && t.c===c);
+}
+function validPlace(r,c){
+  return !pathSet.has(`${r},${c}`) && !towerAt(r,c);
+}
+
+function handleCellTap(r,c){
+  if(gameOver) return;
+
+  const existing = towerAt(r,c);
+
+  if(sellMode){
+    if(!existing){
+      setMsg("ช่องนี้ไม่มีป้อมให้ขาย");
+      return;
+    }
+    const refund = Math.floor(towerData[existing.type].cost * .65);
+    coins += refund;
+    existing.el.remove();
+    towers = towers.filter(t => t !== existing);
+    setMsg(`ขายป้อมแล้ว ได้คืน ${refund} coins`);
+    updateUI();
+    updateShop();
+    return;
+  }
+
+  if(existing){
+    setMsg("ช่องนี้มีป้อมอยู่แล้ว กด Sell Mode ถ้าต้องการขาย");
+    return;
+  }
+
+  if(!validPlace(r,c)){
+    setMsg("วางบนทางเดินไม่ได้ ต้องวางบนช่องว่างเท่านั้น");
+    flashCell(r,c,false);
+    return;
+  }
+
+  const data = towerData[selectedType];
+  if(coins < data.cost){
+    setMsg(`เหรียญไม่พอ ต้องใช้ ${data.cost} coins`);
+    flashCell(r,c,false);
+    return;
+  }
+
+  coins -= data.cost;
+  const el = document.createElement("div");
+  el.className = `tower ${data.cls}`;
+  cells[indexOfCell(r,c)].appendChild(el);
+
+  towers.push({
+    r,c,
+    type:selectedType,
+    el,
+    cooldown:0,
+    angle:0
+  });
+
+  flashCell(r,c,true);
+  setMsg(`วาง ${data.name} แล้ว เหลือ ${coins} coins`);
+  updateUI();
+  updateShop();
+}
+
+function previewCell(r,c){
+  clearPreview();
+  if(gameOver) return;
+  const cell = cells[indexOfCell(r,c)];
+  if(sellMode && towerAt(r,c)){
+    cell.classList.add("valid");
+    return;
+  }
+  if(!sellMode && validPlace(r,c)){
+    cell.classList.add("preview","valid");
+  }else{
+    cell.classList.add("invalid");
+  }
+}
+
+function clearPreview(){
+  cells.forEach(c => c.classList.remove("preview","valid","invalid"));
+}
+
+function flashCell(r,c,ok){
+  const cell = cells[indexOfCell(r,c)];
+  cell.classList.add(ok ? "valid" : "invalid");
+  setTimeout(()=>cell.classList.remove("valid","invalid"),180);
+}
+
+function startWave(){
+  if(gameOver || running) return;
+  if(wave > MAX_WAVE) return;
+
+  running = true;
+  waveAlive = true;
+  startBtn.disabled = true;
+  spawnTimer = 0;
+
+  const count = 7 + wave * 2;
+  spawnQueue = [];
+
+  for(let i=0;i<count;i++){
+    let kind = "normal";
+    if(wave >= 4 && i % 5 === 4) kind = "fast";
+    if(wave === MAX_WAVE && i === count-1) kind = "boss";
+
+    const hpBase = 34 + wave * 12;
+    const enemy = {
+      kind,
+      hp: kind==="boss" ? hpBase*5.5 : kind==="fast" ? hpBase*.78 : hpBase,
+      maxHp: kind==="boss" ? hpBase*5.5 : kind==="fast" ? hpBase*.78 : hpBase,
+      speed: kind==="boss" ? .38 : kind==="fast" ? .78 : .52,
+      progress:0,
+      slowUntil:0,
+      el:null,
+      reached:false
+    };
+    spawnQueue.push(enemy);
+  }
+
+  setMsg(`Wave ${wave} เริ่มแล้ว! ศัตรูกำลังมา`);
+}
+
+function spawnEnemy(enemy){
+  const el = document.createElement("div");
+  el.className = `enemy ${enemy.kind === "fast" ? "fast" : ""} ${enemy.kind === "boss" ? "boss" : ""}`;
+  el.innerHTML = `<div class="hp"><i></i></div>`;
+  entityLayer.appendChild(el);
+  enemy.el = el;
+  enemies.push(enemy);
+}
+
+function getEnemyPosition(e){
+  const maxSeg = path.length - 1;
+  const segFloat = Math.min(e.progress, maxSeg - 0.001);
+  const i = Math.floor(segFloat);
+  const t = segFloat - i;
+  const a = path[i];
+  const b = path[i+1] || path[i];
+  const rg = a[0] + (b[0]-a[0])*t;
+  const cg = a[1] + (b[1]-a[1])*t;
+  const center = getCellCenter(rg,cg);
+  return { x:center.x, y:center.y, rg, cg };
+}
+
+function updateEnemyVisual(e){
+  const p = getEnemyPosition(e);
+  e.el.style.left = p.x + "%";
+  e.el.style.top = p.y + "%";
+  const hp = Math.max(0, e.hp / e.maxHp * 100);
+  e.el.querySelector("i").style.width = hp + "%";
+}
+
+function updateTowers(dt, now){
+  for(const t of towers){
+    const data = towerData[t.type];
+    t.cooldown -= dt;
+
+    let target = null;
+    let best = Infinity;
+
+    for(const e of enemies){
+      const d = gridDistance(t,e);
+      if(d <= data.range && d < best){
+        best = d;
+        target = e;
+      }
+    }
+
+    if(target){
+      const ep = getEnemyPosition(target);
+      const tc = getCellCenter(t.r,t.c);
+      const angle = Math.atan2(ep.y - tc.y, ep.x - tc.x);
+      t.el.style.setProperty("--rot", angle + "rad");
+      t.el.style.transform = `rotate(${angle}rad)`;
+
+      if(t.cooldown <= 0){
+        fire(t,target,data);
+        t.cooldown = data.cooldown;
+      }
+    }
+  }
+}
+
+function fire(t,target,data){
+  const from = getCellCenter(t.r,t.c);
+  const to = getEnemyPosition(target);
+  const b = document.createElement("div");
+  b.className = `bullet ${data.slow ? "slow" : ""}`;
+  bulletLayer.appendChild(b);
+
+  bullets.push({
+    el:b,
+    x:from.x, y:from.y,
+    tx:to.x, ty:to.y,
+    target,
+    damage:data.damage,
+    slow:data.slow || 0,
+    slowTime:data.slowTime || 0,
+    life:180,
+    maxLife:180
+  });
+}
+
+function updateBullets(dt, now){
+  for(const b of [...bullets]){
+    b.life -= dt;
+    const done = b.life <= 0 || !enemies.includes(b.target);
+
+    const pct = 1 - Math.max(0,b.life) / b.maxLife;
+    const tx = enemies.includes(b.target) ? getEnemyPosition(b.target).x : b.tx;
+    const ty = enemies.includes(b.target) ? getEnemyPosition(b.target).y : b.ty;
+    const x = b.x + (tx-b.x)*pct;
+    const y = b.y + (ty-b.y)*pct;
+    b.el.style.left = x + "%";
+    b.el.style.top = y + "%";
+
+    if(done){
+      if(enemies.includes(b.target)){
+        b.target.hp -= b.damage;
+        if(b.slow){
+          b.target.slowUntil = now + b.slowTime;
+          b.target.slowFactor = b.slow;
+        }
+        if(b.target.hp <= 0){
+          killEnemy(b.target);
+        }
+      }
+      b.el.remove();
+      bullets = bullets.filter(x => x !== b);
+    }
+  }
+}
+
+function killEnemy(e){
+  const reward = e.kind==="boss" ? 45 : e.kind==="fast" ? 12 : 10;
+  coins += reward;
+  score += e.kind==="boss" ? 250 : e.kind==="fast" ? 65 : 50;
+  e.el.remove();
+  enemies = enemies.filter(x => x !== e);
+  updateUI();
+  updateShop();
+}
+
+function updateEnemies(dt, now){
+  if(running && spawnQueue.length){
+    spawnTimer -= dt;
+    if(spawnTimer <= 0){
+      spawnEnemy(spawnQueue.shift());
+      spawnTimer = Math.max(330, 950 - wave*45);
+    }
+  }
+
+  const maxProgress = path.length - 1;
+  for(const e of [...enemies]){
+    const slow = e.slowUntil && now < e.slowUntil ? e.slowFactor : 1;
+    e.progress += e.speed * slow * dt / 1000;
+    if(e.progress >= maxProgress){
+      hearts -= e.kind==="boss" ? 3 : 1;
+      e.el.remove();
+      enemies = enemies.filter(x => x !== e);
+      updateUI();
+
+      if(hearts <= 0){
+        endGame(false);
+        return;
+      }
+    }else{
+      updateEnemyVisual(e);
+    }
+  }
+
+  if(running && spawnQueue.length === 0 && enemies.length === 0){
+    completeWave();
+  }
+}
+
+function completeWave(){
+  running = false;
+  waveAlive = false;
+  startBtn.disabled = false;
+
+  if(wave >= MAX_WAVE){
+    endGame(true);
+    return;
+  }
+
+  coins += 22 + wave * 3;
+  score += 100;
+  wave += 1;
+  updateUI();
+  updateShop();
+  setMsg(`ผ่าน Wave แล้ว! ได้โบนัส coins เตรียมรับ Wave ${wave}`);
+}
+
+function endGame(win){
+  gameOver = true;
+  running = false;
+  startBtn.disabled = true;
+
+  if(win){
+    showOverlay("You Win!", `ป้องกันฐานสำเร็จครบ ${MAX_WAVE} waves · Score ${score}`);
+  }else{
+    showOverlay("Game Over", `ฐานแตกที่ Wave ${wave} · Score ${score}`);
+  }
+}
+
+function updateUI(){
+  heartText.textContent = hearts;
+  coinText.textContent = coins;
+  waveText.textContent = `${Math.min(wave,MAX_WAVE)}/${MAX_WAVE}`;
+  scoreText.textContent = score;
+}
+
+function updateShop(){
+  sellBtn.textContent = `Sell Mode: ${sellMode ? "On" : "Off"}`;
+
+  document.querySelectorAll(".shopBtn").forEach(btn=>{
+    const type = btn.dataset.type;
+    btn.classList.toggle("active", type === selectedType && !sellMode);
+    btn.disabled = coins < towerData[type].cost && selectedType !== type;
+  });
+}
+
+function setMsg(txt){
+  message.textContent = txt;
+}
+
+function showOverlay(title, text){
+  resultTitle.textContent = title;
+  resultText.textContent = text;
+  overlay.classList.add("show");
+}
+
+function hideOverlay(){
+  overlay.classList.remove("show");
+}
+
+function loop(now){
+  const dt = Math.min(40, now - lastTime);
+  lastTime = now;
+
+  if(!gameOver){
+    updateEnemies(dt, now);
+    updateTowers(dt, now);
+    updateBullets(dt, now);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+startBtn.addEventListener("click", startWave);
+resetBtn.addEventListener("click", init);
+overlayBtn.addEventListener("click", () => {
+  if(gameOver) init();
+  hideOverlay();
+});
+
+sellBtn.addEventListener("click", () => {
+  sellMode = !sellMode;
+  clearPreview();
+  updateShop();
+  setMsg(sellMode ? "Sell Mode เปิดอยู่ แตะป้อมเพื่อขายคืน 65%" : "Sell Mode ปิดแล้ว เลือกป้อมเพื่อวางต่อ");
+});
+
+init();
+showOverlay("Tiny Defense", "เลือกป้อมแล้วแตะช่องว่างเพื่อวาง จากนั้นกด Start Wave");
+</script>
+</body>
+</html>
